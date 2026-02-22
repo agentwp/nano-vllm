@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+import torch
 from transformers import AutoConfig
 
 
@@ -10,6 +11,7 @@ class Config:
     max_num_seqs: int = 512
     max_model_len: int = 4096
     memory_utilization: float = 0.75
+    device: str = "auto"
     hf_config: AutoConfig | None = None
     eos: int = -1
     kvcache_block_size: int = 256
@@ -21,3 +23,5 @@ class Config:
         self.hf_config = AutoConfig.from_pretrained(self.model)
         self.max_model_len = min(self.max_model_len, self.hf_config.max_position_embeddings)
         assert self.max_num_batched_tokens >= self.max_model_len
+        if self.device == "auto":
+            self.device = "mps" if torch.backends.mps.is_available() else "cpu"

@@ -63,6 +63,20 @@ class TestConfig:
         cfg = Config(model_path)
         assert cfg.num_kvcache_blocks == -1  # set at runtime by model_runner
 
+    def test_device_auto_resolves(self, model_path):
+        # "auto" should resolve to a concrete device string, never stay as "auto"
+        cfg = Config(model_path, device="auto")
+        assert cfg.device in ("cpu", "mps")
+
+    def test_device_cpu_explicit(self, model_path):
+        cfg = Config(model_path, device="cpu")
+        assert cfg.device == "cpu"
+
+    def test_device_default_is_auto(self, model_path):
+        # Default device is "auto", which resolves at post_init time
+        cfg = Config(model_path)
+        assert cfg.device in ("cpu", "mps")
+
 
 # ─── SamplingParams ───────────────────────────────────────────────────────────
 
