@@ -82,13 +82,17 @@ def _sdpa(
     """
     Run scaled dot-product attention. Inputs/outputs are
     [seqlen, num_heads, head_dim]; internally reshaped for SDPA.
-    Casts to float32 for broad dtype compatibility on CPU.
+    Casts to float32 only when required (bfloat16 on CPU); MPS handles
+    bfloat16 natively so the cast is skipped there.
     """
     dtype = q.dtype
+    needs_cast = dtype == torch.bfloat16 and q.device.type == "cpu"
+    if needs_cast:
+        q, k, v = q.float(), k.float(), v.float()
     # [1, num_heads, seqlen, head_dim]
-    q4 = q.permute(1, 0, 2).unsqueeze(0).float()
-    k4 = k.permute(1, 0, 2).unsqueeze(0).float()
-    v4 = v.permute(1, 0, 2).unsqueeze(0).float()
+    q4 = q.permute(1, 0, 2).unsqueeze(0)
+    k4 = k.permute(1, 0, 2).unsqueeze(0)
+    v4 = v.permute(1, 0, 2).unsqueeze(0)
     o4 = F.scaled_dot_product_attention(q4, k4, v4, scale=scale, is_causal=is_causal)
     # [seqlen, num_heads, head_dim]
     return o4.squeeze(0).permute(1, 0, 2).to(dtype)

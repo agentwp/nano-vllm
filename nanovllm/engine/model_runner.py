@@ -19,7 +19,7 @@ class ModelRunner:
 
         default_dtype = torch.get_default_dtype()
         torch.set_default_dtype(hf_config.torch_dtype)
-        torch.set_default_device("cpu")
+        torch.set_default_device(config.device)
 
         self.model = Qwen3ForCausalLM(hf_config)
         load_model(self.model, config.model)
