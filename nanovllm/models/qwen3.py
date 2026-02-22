@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import torch.distributed as dist
 from transformers import Qwen3Config
 
 from nanovllm.layers.activation import SiluAndMul
@@ -9,6 +8,17 @@ from nanovllm.layers.layernorm import RMSNorm
 from nanovllm.layers.linear import QKVParallelLinear, MergedColumnParallelLinear, RowParallelLinear
 from nanovllm.layers.rotary_embedding import get_rope
 from nanovllm.layers.embed_head import VocabParallelEmbedding, ParallelLMHead
+
+
+def _normalize_rope_scaling(rope_scaling):
+    """Convert rope_scaling dict to None when it is standard ("default") RoPE.
+    lru_cache requires hashable arguments, and dicts are not hashable."""
+    if rope_scaling is None:
+        return None
+    rope_type = rope_scaling.get("type") or rope_scaling.get("rope_type", "")
+    if rope_type == "default":
+        return None
+    return rope_scaling
 
 
 class Qwen3Attention(nn.Module):
@@ -26,13 +36,10 @@ class Qwen3Attention(nn.Module):
         rope_scaling: tuple | None = None,
     ) -> None:
         super().__init__()
-        tp_size = dist.get_world_size()
         self.total_num_heads = num_heads
-        assert self.total_num_heads % tp_size == 0
-        self.num_heads = self.total_num_heads // tp_size
+        self.num_heads = num_heads
         self.total_num_kv_heads = num_kv_heads
-        assert self.total_num_kv_heads % tp_size == 0
-        self.num_kv_heads = self.total_num_kv_heads // tp_size
+        self.num_kv_heads = num_kv_heads
         self.head_dim = head_dim or hidden_size // self.total_num_heads
         self.q_size = self.num_heads * self.head_dim
         self.kv_size = self.num_kv_heads * self.head_dim
@@ -132,7 +139,7 @@ class Qwen3DecoderLayer(nn.Module):
             qkv_bias=getattr(config, 'attention_bias', True),
             head_dim=getattr(config, 'head_dim', None),
             rope_theta=getattr(config, "rope_theta", 1000000),
-            rope_scaling=getattr(config, "rope_scaling", None),
+            rope_scaling=_normalize_rope_scaling(getattr(config, "rope_scaling", None)),
         )
         self.mlp = Qwen3MLP(
             hidden_size=config.hidden_size,
