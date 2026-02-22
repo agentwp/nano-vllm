@@ -6,17 +6,24 @@ build-backend = "setuptools.build_meta"
 name = "nano-vllm"
 version = "0.2.0"
 authors = [{ name = "Xingkai Yu" }]
-license = "MIT"
-license-files = ["LICENSE"]
+license = {text = "MIT"}
 readme = "README.md"
 description = "a lightweight vLLM implementation built from scratch"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<=3.13.3"
 dependencies = [
     "torch>=2.4.0",
-    "triton>=3.0.0",
     "transformers>=4.51.0",
-    "flash-attn",
     "xxhash",
+    "psutil",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:torch",
 ]
 
 [project.urls]
